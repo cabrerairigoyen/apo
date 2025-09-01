@@ -114,14 +114,22 @@ void simulate_pi_data(int counter) {
 }
 
 int main(int argc, char * argv[]) {
-    // Show initial screen
+    // Show initial screen with external data info
     draw_header();
+    
+    // Show external data if available
+    if (eadk_external_data && eadk_external_data[0] != '\0') {
+        draw_status_line("External data loaded:", 0);
+        draw_status_line(eadk_external_data, 1);
+        eadk_timing_msleep(2000);  // Show for 2 seconds
+    }
+    
     show_instructions();
     
     int counter = 0;
     
     // Main loop
-    while (true) {
+    while (1) {  // Use 1 instead of true for C99 compatibility
         eadk_keyboard_state_t keyboard = eadk_keyboard_scan();
         
         // Handle back button (exit)

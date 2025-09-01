@@ -19,7 +19,18 @@ CFLAGS += -Os -Wall
 CFLAGS += -ggdb
 LDFLAGS = -Wl,--relocatable
 LDFLAGS += -nostartfiles
-LDFLAGS += --specs=nano.specs
+
+# Try to use specs if available, fallback gracefully
+ifneq ($(shell $(CC) --specs=nano.specs -E -x c /dev/null 2>/dev/null; echo $$?),0)
+  ifneq ($(shell $(CC) --specs=nosys.specs -E -x c /dev/null 2>/dev/null; echo $$?),0)
+    # Neither nano nor nosys specs available - use basic flags
+    LDFLAGS += -nostdlib
+  else
+    LDFLAGS += --specs=nosys.specs
+  endif
+else
+  LDFLAGS += --specs=nano.specs
+endif
 
 ifeq ($(LINK_GC),1)
 CFLAGS += -fdata-sections -ffunction-sections

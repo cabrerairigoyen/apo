@@ -1,7 +1,4 @@
 #include <eadk.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Pi Stream";
 const uint32_t eadk_api_level __attribute__((section(".rodata.eadk_api_level"))) = 0;
@@ -39,8 +36,43 @@ void show_instructions() {
     draw_status_line("Waiting for Pi data...", 7);
 }
 
+// Simple number to string conversion
+void int_to_string(int num, char* str) {
+    if (num == 0) {
+        str[0] = '0';
+        str[1] = '\0';
+        return;
+    }
+    
+    int i = 0;
+    int temp = num;
+    
+    // Handle negative numbers
+    if (num < 0) {
+        str[i++] = '-';
+        num = -num;
+    }
+    
+    // Count digits
+    int digits = 0;
+    temp = num;
+    while (temp > 0) {
+        temp /= 10;
+        digits++;
+    }
+    
+    // Fill string backwards
+    str[i + digits] = '\0';
+    while (num > 0) {
+        str[i + digits - 1] = '0' + (num % 10);
+        num /= 10;
+        digits--;
+    }
+}
+
 void simulate_pi_data(int counter) {
-    char buffer[100];
+    char buffer[50];
+    char num_str[20];
     
     if (counter % 200 == 0) {  // Every ~4 seconds
         clear_content_area();
@@ -49,7 +81,19 @@ void simulate_pi_data(int counter) {
             draw_status_line("Pi Connected!", 0);
             draw_status_line("Receiving data stream...", 1);
             draw_status_line("", 2);
-            sprintf(buffer, "Data packet #%d", counter / 200);
+            
+            // Build "Data packet #N" string manually
+            buffer[0] = 'D'; buffer[1] = 'a'; buffer[2] = 't'; buffer[3] = 'a';
+            buffer[4] = ' '; buffer[5] = 'p'; buffer[6] = 'a'; buffer[7] = 'c';
+            buffer[8] = 'k'; buffer[9] = 'e'; buffer[10] = 't'; buffer[11] = ' ';
+            buffer[12] = '#';
+            int_to_string(counter / 200, num_str);
+            int j = 13;
+            for (int k = 0; num_str[k] != '\0'; k++) {
+                buffer[j++] = num_str[k];
+            }
+            buffer[j] = '\0';
+            
             draw_status_line(buffer, 3);
             draw_status_line("Temperature: 25.3°C", 4);
             draw_status_line("CPU Usage: 42%", 5);
@@ -58,15 +102,13 @@ void simulate_pi_data(int counter) {
             draw_status_line("E = mc²", 1);
             draw_status_line("π ≈ 3.14159", 2);
             draw_status_line("∫ sin(x)dx = -cos(x)", 3);
-            sprintf(buffer, "Calculation #%d", (counter / 200) - 2);
-            draw_status_line(buffer, 4);
+            draw_status_line("Calculation complete", 4);
         } else {
             // Reset counter display
             draw_status_line("Stream continues...", 0);
             draw_status_line("Real-time monitoring", 1);
-            sprintf(buffer, "Uptime: %d seconds", counter / 50);
-            draw_status_line(buffer, 2);
-            draw_status_line("Status: Connected", 3);
+            draw_status_line("Status: Connected", 2);
+            draw_status_line("Press OK to clear", 3);
         }
     }
 }

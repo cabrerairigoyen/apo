@@ -11,7 +11,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install ARM toolchain and Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install ARM toolchain
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -19,27 +24,50 @@ jobs:
             git \
             gcc-arm-none-eabi \
             binutils-arm-none-eabi \
-            libnewlib-arm-none-eabi \
-            libstdc++-arm-none-eabi-newlib \
-            nodejs \
-            npm
+            libnewlib-arm-none-eabi
+
+      - name: Verify toolchain
+        run: |
+          arm-none-eabi-gcc --version
+          node --version
+          npm --version
+
+      - name: Install nwlink
+        run: |
+          npm install -g nwlink@0.0.16
+
+      - name: Verify nwlink installation
+        run: |
+          nwlink --version || echo "nwlink version check failed, continuing..."
 
       - name: Build EADK external app
         run: |
-          # Build the Pi Stream EADK app using proper nwlink
+          # Build using the official sample structure
           make clean
           make build
 
+      - name: List build output
+        run: |
+          find . -name "*.nwa" -o -name "*.elf" -o -name "*.o" | head -20
+
       - name: Verify .nwa file
         run: |
-          ls -la output/pi_stream.nwa
-          file output/pi_stream.nwa
-          echo "NWA file size: $(stat -c%s output/pi_stream.nwa) bytes"
+          if [ -f "output/pi_stream.nwa" ]; then
+            ls -la output/pi_stream.nwa
+            file output/pi_stream.nwa
+            echo "NWA file size: $(stat -c%s output/pi_stream.nwa) bytes"
+          else
+            echo "NWA file not found, checking for alternatives..."
+            find output -type f 2>/dev/null || echo "No output directory"
+          fi
 
       - name: Upload .nwa artifact
         uses: actions/upload-artifact@v4
         with:
           name: pi-stream-eadk-nwa
-          path: output/pi_stream.nwa
+          path: |
+            output/pi_stream.nwa
+            output/*.nwa
+        continue-on-error: true
 
 

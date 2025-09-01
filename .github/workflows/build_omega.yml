@@ -1,4 +1,4 @@
-name: Build Omega with Pi Stream (N0110)
+name: Build Pi Stream EADK External App
 
 on:
   push:
@@ -11,73 +11,35 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install ARM toolchain
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential \
             git \
-            python3 \
-            python3-pip \
-            wget \
-            libusb-1.0-0-dev \
             gcc-arm-none-eabi \
-            binutils-arm-none-eabi 
+            binutils-arm-none-eabi
 
-      - name: Clone Omega (with submodules)
+      - name: Clone NumWorks Epsilon for EADK
         run: |
-          git clone --recursive https://github.com/Omega-Numworks/Omega.git
+          git clone --depth 1 https://github.com/numworks/epsilon.git
 
-      - name: Copy Pi Stream external app into Omega
+      - name: Build EADK external app
         run: |
-          # Replace the sample external app with our Pi Stream app
-          rm -f Omega/apps/external/app/sample.c
-          cp pi_stream_external.c Omega/apps/external/app/
-          
-          # Update sources.mak to build our app
-          echo "app_external_src += \$(addprefix apps/external/app/,\\" > Omega/apps/external/app/sources.mak
-          echo "	pi_stream_external.c \\" >> Omega/apps/external/app/sources.mak
-          echo ")" >> Omega/apps/external/app/sources.mak
-
-      - name: Enable external app in Omega config
-        run: |
-          # Ensure config.mak exists
-          touch Omega/build/config.mak
-          # Enable external app support
-          echo 'EPSILON_APPS += external' >> Omega/build/config.mak
-          echo 'HOME_DISPLAY_EXTERNALS = 1' >> Omega/build/config.mak
-
-      - name: Build for N0110 with external app
-        working-directory: Omega
-        run: |
+          # Build the Pi Stream EADK app
           make clean
-          make MODEL=n0110 OMEGA_USERNAME="PiStream" PLATFORM=device -j2
+          make pi_stream.nwa
 
-      - name: Create .nwa package
-        working-directory: Omega
+      - name: Verify .nwa file
         run: |
-          # The external app binary should be in the build output
-          # Package it as a .nwa (tar archive) for external installation
-          mkdir -p nwa_package
-          
-          # Find the external app binary/data and package it
-          if [ -f "output/device/n0110/release/apps/external/app/pi_stream_external.o" ]; then
-            cp output/device/n0110/release/apps/external/app/pi_stream_external.o nwa_package/
-            cd nwa_package
-            tar -cf ../pi_stream.nwa *
-            cd ..
-          else
-            echo "External app object not found, creating dummy .nwa"
-            echo "Pi Stream External App" > nwa_package/readme.txt
-            cd nwa_package
-            tar -cf ../pi_stream.nwa *
-            cd ..
-          fi
+          ls -la pi_stream.nwa
+          file pi_stream.nwa
+          echo "NWA file size: $(stat -c%s pi_stream.nwa) bytes"
 
       - name: Upload .nwa artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pi-stream-nwa
-          path: Omega/pi_stream.nwa
+          name: pi-stream-eadk-nwa
+          path: pi_stream.nwa
 
 

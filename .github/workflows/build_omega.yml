@@ -1,0 +1,57 @@
+name: Build Omega with Pi Stream (N0110)
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            git \
+            python3 \
+            python3-pip \
+            wget \
+            libusb-1.0-0-dev \
+            gcc-arm-none-eabi \
+            binutils-arm-none-eabi 
+
+      - name: Clone Omega (with submodules)
+        run: |
+          git clone --recursive https://github.com/Omega-Numworks/Omega.git
+
+      - name: Copy Pi Stream app into Omega
+        run: |
+          rm -rf Omega/apps/pi_stream_app
+          cp -r "pi_stream_app" Omega/apps/pi_stream_app
+
+      - name: Enable app in Omega config
+        run: |
+          # Ensure config.mak exists
+          touch Omega/build/config.mak
+          # Append our app to EPSILON_APPS if not already present
+          if ! grep -q "pi_stream_app" Omega/build/config.mak; then
+            echo 'EPSILON_APPS += pi_stream_app' >> Omega/build/config.mak
+          fi
+
+      - name: Build binpack for N0110
+        working-directory: Omega
+        run: |
+          make clean
+          make MODEL=n0110 OMEGA_USERNAME="PiStream" binpack -j2
+
+      - name: Upload binpack artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: omega-binpack-n0110
+          path: Omega/output/device/n0110/release/binpack.bin
+
+

@@ -20,10 +20,6 @@ jobs:
             gcc-arm-none-eabi \
             binutils-arm-none-eabi
 
-      - name: Clone NumWorks Epsilon for EADK
-        run: |
-          git clone --depth 1 https://github.com/numworks/epsilon.git
-
       - name: Build EADK external app
         run: |
           # Build the Pi Stream EADK app

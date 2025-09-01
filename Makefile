@@ -6,10 +6,8 @@ CXX = arm-none-eabi-g++
 LD = arm-none-eabi-gcc
 OBJCOPY = arm-none-eabi-objcopy
 
-EADK_PATH ?= ./epsilon/eadk
-
 # Compiler flags for EADK
-CPPFLAGS = -I$(EADK_PATH)/include
+CPPFLAGS = 
 CXXFLAGS = -std=c++14 -fno-exceptions -fno-rtti
 CFLAGS = -std=c99
 LDFLAGS = -Wl,--relocatable -nostartfiles
@@ -49,14 +47,4 @@ $(TARGET).elf: $(OBJECTS)
 clean:
 	$(Q) rm -f $(OBJECTS) $(TARGET).elf $(TARGET).nwa
 
-# EADK dependency
-epsilon:
-	$(Q) if [ ! -d "epsilon" ]; then \
-		echo "Cloning epsilon for EADK..."; \
-		git clone --depth 1 https://github.com/numworks/epsilon.git; \
-	fi
-
-.PHONY: all clean epsilon
-
-# Ensure epsilon is available before building
-$(OBJECTS): | epsilon
+.PHONY: all clean

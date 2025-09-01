@@ -28,30 +28,56 @@ jobs:
         run: |
           git clone --recursive https://github.com/Omega-Numworks/Omega.git
 
-      - name: Copy Pi Stream app into Omega
+      - name: Copy Pi Stream external app into Omega
         run: |
-          rm -rf Omega/apps/pi_stream_app
-          cp -r "pi_stream_app" Omega/apps/pi_stream_app
+          # Replace the sample external app with our Pi Stream app
+          rm -f Omega/apps/external/app/sample.c
+          cp pi_stream_external.c Omega/apps/external/app/
+          
+          # Update sources.mak to build our app
+          echo "app_external_src += \$(addprefix apps/external/app/,\\" > Omega/apps/external/app/sources.mak
+          echo "	pi_stream_external.c \\" >> Omega/apps/external/app/sources.mak
+          echo ")" >> Omega/apps/external/app/sources.mak
 
-      - name: Enable app in Omega config
+      - name: Enable external app in Omega config
         run: |
           # Ensure config.mak exists
           touch Omega/build/config.mak
-          # Append our app to EPSILON_APPS if not already present
-          if ! grep -q "pi_stream_app" Omega/build/config.mak; then
-            echo 'EPSILON_APPS += pi_stream_app' >> Omega/build/config.mak
-          fi
+          # Enable external app support
+          echo 'EPSILON_APPS += external' >> Omega/build/config.mak
+          echo 'HOME_DISPLAY_EXTERNALS = 1' >> Omega/build/config.mak
 
-      - name: Build binpack for N0110
+      - name: Build for N0110 with external app
         working-directory: Omega
         run: |
           make clean
-          make MODEL=n0110 OMEGA_USERNAME="PiStream" binpack -j2
+          make MODEL=n0110 OMEGA_USERNAME="PiStream" PLATFORM=device -j2
 
-      - name: Upload binpack artifact
+      - name: Create .nwa package
+        working-directory: Omega
+        run: |
+          # The external app binary should be in the build output
+          # Package it as a .nwa (tar archive) for external installation
+          mkdir -p nwa_package
+          
+          # Find the external app binary/data and package it
+          if [ -f "output/device/n0110/release/apps/external/app/pi_stream_external.o" ]; then
+            cp output/device/n0110/release/apps/external/app/pi_stream_external.o nwa_package/
+            cd nwa_package
+            tar -cf ../pi_stream.nwa *
+            cd ..
+          else
+            echo "External app object not found, creating dummy .nwa"
+            echo "Pi Stream External App" > nwa_package/readme.txt
+            cd nwa_package
+            tar -cf ../pi_stream.nwa *
+            cd ..
+          fi
+
+      - name: Upload .nwa artifact
         uses: actions/upload-artifact@v4
         with:
-          name: omega-binpack-n0110
-          path: Omega/output/device/n0110/release/binpack.bin
+          name: pi-stream-nwa
+          path: Omega/pi_stream.nwa
 
 

@@ -10,12 +10,12 @@ OBJCOPY = arm-none-eabi-objcopy
 CPPFLAGS = 
 CXXFLAGS = -std=c++14 -fno-exceptions -fno-rtti
 CFLAGS = -std=c99
-LDFLAGS = -Wl,--relocatable -nostartfiles
+LDFLAGS = -nostdlib -Wl,--entry=main
 
-# Common flags
+# Common flags for ARM Cortex-M7 (NumWorks N0110)
 SFLAGS = -mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard
-CFLAGS += $(SFLAGS) -Os -Wall -Wextra
-CXXFLAGS += $(SFLAGS) -Os -Wall -Wextra  
+CFLAGS += $(SFLAGS) -Os -Wall -Wextra -fno-builtin
+CXXFLAGS += $(SFLAGS) -Os -Wall -Wextra -fno-builtin
 LDFLAGS += $(SFLAGS)
 
 # Target

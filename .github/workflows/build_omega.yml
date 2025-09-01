@@ -11,31 +11,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install ARM toolchain
+      - name: Install ARM toolchain and Node.js
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential \
             git \
             gcc-arm-none-eabi \
-            binutils-arm-none-eabi
+            binutils-arm-none-eabi \
+            nodejs \
+            npm
 
       - name: Build EADK external app
         run: |
-          # Build the Pi Stream EADK app
+          # Build the Pi Stream EADK app using proper nwlink
           make clean
-          make pi_stream.nwa
+          make build
 
       - name: Verify .nwa file
         run: |
-          ls -la pi_stream.nwa
-          file pi_stream.nwa
-          echo "NWA file size: $(stat -c%s pi_stream.nwa) bytes"
+          ls -la output/pi_stream.nwa
+          file output/pi_stream.nwa
+          echo "NWA file size: $(stat -c%s output/pi_stream.nwa) bytes"
 
       - name: Upload .nwa artifact
         uses: actions/upload-artifact@v4
         with:
           name: pi-stream-eadk-nwa
-          path: pi_stream.nwa
+          path: output/pi_stream.nwa
 
 

@@ -1,50 +1,66 @@
-# EADK Makefile for Pi Stream External App
-
 Q ?= @
 CC = arm-none-eabi-gcc
-CXX = arm-none-eabi-g++
-LD = arm-none-eabi-gcc
-OBJCOPY = arm-none-eabi-objcopy
+BUILD_DIR = output
+NWLINK = npx --yes -- nwlink@0.0.16
+LINK_GC = 1
+LTO = 1
 
-# Compiler flags for EADK
-CPPFLAGS = 
-CXXFLAGS = -std=c++14 -fno-exceptions -fno-rtti
+define object_for
+$(addprefix $(BUILD_DIR)/,$(addsuffix .o,$(basename $(1))))
+endef
+
+src = $(addprefix src/,\
+  main.c \
+)
+
 CFLAGS = -std=c99
-LDFLAGS = -nostdlib -Wl,--entry=main
+CFLAGS += $(shell $(NWLINK) eadk-cflags)
+CFLAGS += -Os -Wall
+CFLAGS += -ggdb
+LDFLAGS = -Wl,--relocatable
+LDFLAGS += -nostartfiles
+LDFLAGS += --specs=nano.specs
 
-# Common flags for ARM Cortex-M7 (NumWorks N0110)
-SFLAGS = -mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard
-CFLAGS += $(SFLAGS) -Os -Wall -Wextra -fno-builtin
-CXXFLAGS += $(SFLAGS) -Os -Wall -Wextra -fno-builtin
-LDFLAGS += $(SFLAGS)
+ifeq ($(LINK_GC),1)
+CFLAGS += -fdata-sections -ffunction-sections
+LDFLAGS += -Wl,-e,main -Wl,-u,eadk_app_name -Wl,-u,eadk_app_icon -Wl,-u,eadk_api_level
+LDFLAGS += -Wl,--gc-sections
+endif
 
-# Target
-TARGET = pi_stream
-SOURCES = pi_stream_eadk.c
+ifeq ($(LTO),1)
+CFLAGS += -flto -fno-fat-lto-objects
+CFLAGS += -fwhole-program
+CFLAGS += -fvisibility=internal
+LDFLAGS += -flinker-output=nolto-rel
+endif
 
-# Object files
-OBJECTS = $(SOURCES:.c=.o)
+.PHONY: build
+build: $(BUILD_DIR)/pi_stream.nwa
 
-# Default target
-all: $(TARGET).nwa
+.PHONY: check
+check: $(BUILD_DIR)/pi_stream.bin
 
-# Build the .nwa file
-$(TARGET).nwa: $(TARGET).elf
-	$(Q) echo "Creating NWA: $@"
-	$(Q) $(OBJCOPY) -O binary $< $@
+$(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.nwa src/input.txt
+	@echo "BIN     $@"
+	$(Q) $(NWLINK) nwa-bin --external-data src/input.txt $< $@
 
-# Build the ELF file
-$(TARGET).elf: $(OBJECTS)
-	$(Q) echo "Linking: $@"
-	$(Q) $(LD) $(LDFLAGS) $^ -o $@
+$(BUILD_DIR)/pi_stream.nwa: $(call object_for,$(src)) $(BUILD_DIR)/icon.o
+	@echo "LD      $@"
+	$(Q) $(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
 
-# Compile C files
-%.o: %.c
-	$(Q) echo "Compiling: $<"
-	$(Q) $(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+$(addprefix $(BUILD_DIR)/,%.o): %.c | $(BUILD_DIR)
+	@echo "CC      $^"
+	$(Q) $(CC) $(CFLAGS) -c $^ -o $@
 
-# Clean
+$(BUILD_DIR)/icon.o: src/icon.png
+	@echo "ICON    $<"
+	$(Q) $(NWLINK) png-icon-o $< $@
+
+.PRECIOUS: $(BUILD_DIR)
+$(BUILD_DIR):
+	$(Q) mkdir -p $@/src
+
+.PHONY: clean
 clean:
-	$(Q) rm -f $(OBJECTS) $(TARGET).elf $(TARGET).nwa
-
-.PHONY: all clean
+	@echo "CLEAN"
+	$(Q) rm -rf $(BUILD_DIR)
